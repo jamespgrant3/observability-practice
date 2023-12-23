@@ -8,8 +8,8 @@
   "scripts": {
     "build": "nest build",
     "dist:clear": "rm -rf ./dist",
-    "docker:build": "npm run dist:clear && npm run build && docker build --platform linux/arm64 -t jamespgrant3/eks-api .",
-    "docker:build86": "npm run dist:clear && npm run build && docker build -t jamespgrant3/eks-api .",
+    "docker:build": "npm run dist:clear && npm run build && docker build --platform linux/arm64 -t jamespgrant3/ecs-api .",
+    "docker:build86": "npm run dist:clear && npm run build && docker build -t jamespgrant3/ecs-api .",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "USER_API_HOST=localhost:4000 nest start --watch",

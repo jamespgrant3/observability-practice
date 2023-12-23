@@ -1,9 +1,3 @@
-docker run \
--p 4000:4000 \
--e PORT=4000 \
-jamespgrant3/eks-user-api \
-
-
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
 </p>
@@ -54,7 +48,7 @@ $ npm run start:prod
 $ npm run docker:build
 
 # to run the container
-$ docker run -d -p 4000:4000 --name user-api <partial-image-id>
+$ docker run -d -p 4000:4000 -e PORT=4000 --name user-api <partial-image-id>
 ```
 
 ## Test
