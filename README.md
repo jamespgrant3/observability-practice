@@ -1,4 +1,4 @@
-# ESC Practice
+# ECS Practice
 
 ## Description
 This is a project to gain more experience with ECS, more specifically task communication. I also hope to layer in observability.
