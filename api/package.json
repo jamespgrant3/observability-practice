@@ -12,7 +12,7 @@
     "docker:build86": "npm run dist:clear && npm run build && docker build -t jamespgrant3/ecs-api .",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "USER_API_HOST=localhost:4000 nest start --watch",
+    "start:dev": "USER_API_PORT=4000 USER_API_HOST=localhost nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

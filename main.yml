@@ -458,7 +458,9 @@ Resources:
         - Cpu: 256
           Environment:
             - Name: USER_API_HOST
-              Value: user.api.local:3000
+              Value: user.api.local
+            - Name: USER_API_PORT
+              Value: 3000
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/api:latest'
           LogConfiguration:
             LogDriver: awslogs

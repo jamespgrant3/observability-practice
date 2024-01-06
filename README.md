@@ -21,10 +21,12 @@ Two api's exist in this project, `api` and `user-api`, both are nestjs projects:
 PORT=4000 npm run start:dev
 ```
 
-`cd` into the api directory. Start the api on port 3000, and use an environment variable to tell the api where the user-api is. Run:
+`cd` into the api directory.. Run:
 ```
-USER_API_HOST=localhost:4000 npm run start:dev
+npm run start:dev
 ```
+
+This command automatically sets environment variables inside the `package.json`.
 
 Now, if you navigate to `localhost:3000` you will greated with a hello world screen. If you navigate to `localhost:3000/users` an api call will be made to the users service.
 
