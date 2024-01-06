@@ -15,5 +15,71 @@ Two api's exist in this project, `api` and `user-api`, both are nestjs projects:
 
 [user-api](user-api/README.md)
 
-Locally, you should run each project using `npm run start:dev`. This ensures both api's run on different ports.
-The `api` will run on `3000` and the `user-api` will run on `4000`.
+## Local
+`cd` into the user-api directory. Start the api on port 4000 by running:
+```
+PORT=4000 npm run start:dev
+```
+
+`cd` into the api directory. Start the api on port 3000, and use an environment variable to tell the api where the user-api is. Run:
+```
+USER_API_HOST=localhost:4000 npm run start:dev
+```
+
+Now, if you navigate to `localhost:3000` you will greated with a hello world screen. If you navigate to `localhost:3000/users` an api call will be made to the users service.
+
+## Deployment
+
+### export variables for ease
+```
+export region=us-east-1
+export aws_account_id=<enter aws account id here>
+```
+
+### deploy base infrastructure
+Deploy the base infrastructure needed. This gives you a vpc, a couple of ecr repos, and ecs.
+
+```
+aws cloudformation create-stack \
+--stack-name ecs-practice \
+--template-body file://main.yml \
+--parameters ParameterKey=EnvironmentName,ParameterValue=dev \
+--capabilities CAPABILITY_NAMED_IAM
+```
+
+### docker authentication
+Next, we need to authenticate to be able to push docker containers to ecr.
+
+```
+aws ecr get-login-password --region $region | docker login --username AWS --password-stdin $aws_account_id.dkr.ecr.$region.amazonaws.com
+```
+
+### build images for ecr
+Now we can build the images.
+First, build the user image. `cd` into the `user-api` directory and:
+
+```
+npm run dist:clear && \
+npm run build && \
+docker build --platform linux/arm64 -t $aws_account_id.dkr.ecr.$region.amazonaws.com/user-api:latest .
+```
+
+Now build the api image. `cd` into the `api` directory and:
+
+```
+npm run dist:clear && \
+npm run build && \
+docker build --platform linux/arm64 -t $aws_account_id.dkr.ecr.$region.amazonaws.com/api:latest .
+```
+
+### push images to ecr
+
+Push the images to docker:
+
+```
+docker push $aws_account_id.dkr.ecr.$region.amazonaws.com/api:latest
+```
+
+```
+docker push $aws_account_id.dkr.ecr.$region.amazonaws.com/user-api:latest
+```

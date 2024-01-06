@@ -153,7 +153,6 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
 
-
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -203,7 +202,34 @@ Resources:
       GroupDescription: "Security group with no ingress rule"
       VpcId: !Ref VPC
 
-  K8sRole:
+  ApiEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      EmptyOnDelete: true
+      RepositoryName: api
+
+  UserApiEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      EmptyOnDelete: true
+      RepositoryName: user-api
+
+  UserApiTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: a role for the user api task execution
+      RoleName: user-api-task
+
+  UserApiExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -212,65 +238,304 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-                - eks.amazonaws.com
+                - ecs-tasks.amazonaws.com
             Action:
-              - "sts:AssumeRole"
-      Description: "A role for the eks cluster to assume"
+              - sts:AssumeRole
+      Description: a role for the user task
+      RoleName: user-api-task-execution
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
-      RoleName: eks-cluster-policy
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: user-api-service
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !Join
+                  - ':'
+                  - - 'arn:aws:ecr'
+                    - !Ref AWS::Region
+                    - !Ref AWS::AccountId
+                    - 'repository/user-api'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
 
-  K8sCluster:
-    Type: AWS::EKS::Cluster
+  UserApiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
     Properties:
-      KubernetesNetworkConfig:
-        IpFamily: ipv4
-        ServiceIpv4Cidr: "10.100.0.0/16"
-      Name: "k8s-practice"
-      ResourcesVpcConfig:
-        SubnetIds:
-          - !GetAtt PrivateSubnet1.SubnetId
-          - !GetAtt PrivateSubnet2.SubnetId
-      RoleArn: !GetAtt K8sRole.Arn
+      ContainerDefinitions:
+        - Cpu: 256
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/user-api:latest'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              "awslogs-region": "us-east-1"
+              "awslogs-group": "ecs-practice"
+              "awslogs-stream-prefix": "user-api"
+          Memory: 512
+          Name: user-api
+          PortMappings:
+            - AppProtocol: http
+              ContainerPort: 3000
+              Protocol: tcp
+      Cpu: 256
+      ExecutionRoleArn: !GetAtt UserApiExecutionRole.Arn
+      Family: user-api
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      TaskRoleArn: !GetAtt UserApiTaskRole.Arn
 
-  NodeRole:
-    Type: AWS::IAM::Role
+  UserApiEcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - "sts:AssumeRole"
-      Description: "A role for the eks node to assume"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
-        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-      RoleName: eks-node-policy
+      GroupDescription: allow traffic to user api
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !GetAtt ApiEcsSecurityGroup.GroupId
+          Description: allow ingress traffic from api task
+          IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+      VpcId: !Ref VPC
 
-  K8sNodeGroup:
-    Type: AWS::EKS::Nodegroup
+  EcsCluster:
+    Type: AWS::ECS::Cluster
     Properties:
-      AmiType: AL2_ARM_64
-      ClusterName: "k8s-practice"
-      InstanceTypes:
-        - t4g.small
-      NodegroupName: "k8s-practice-node-group"
-      NodeRole: !GetAtt NodeRole.Arn
-      ScalingConfig:
-        DesiredSize: 1
-        MaxSize: 1
-        MinSize: 1
+      ClusterName: ecs-practice
+
+  ApiNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Description: map user api to a dns entry
+      Name: api.local
+      Vpc: !Ref VPC
+
+  UserApiServiceDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: user api service discovery service
+      DnsConfig:
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - TTL: 30
+            Type: A
+          - TTL: 30
+            Type: SRV
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+      Name: user
+      NamespaceId: !Ref ApiNamespace
+
+  UserApiEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !GetAtt EcsCluster.Arn
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+          SecurityGroups:
+            - !GetAtt UserApiEcsSecurityGroup.GroupId
+      ServiceName: user-api
+      TaskDefinition: !GetAtt UserApiTaskDefinition.TaskDefinitionArn
+      ServiceRegistries:
+        - ContainerName: user-api
+          ContainerPort: 3000
+          RegistryArn: !GetAtt UserApiServiceDiscoveryService.Arn
+
+  UserApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: STANDARD
+      LogGroupName: ecs-practice
+      RetentionInDays: 3
+
+
+  ApiListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ApiTargetGroup
+      LoadBalancerArn: !Ref ApiLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow http ingress from the internet
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: allow http ingress from the internet
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref VPC
+
+  ApiLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      IpAddressType: ipv4
+      Name: api
+      Scheme: internet-facing
+      SecurityGroups:
+        - !GetAtt LoadBalancerSecurityGroup.GroupId
       Subnets:
-        - !GetAtt PrivateSubnet1.SubnetId
-        - !GetAtt PrivateSubnet2.SubnetId
-      Tags:
-        Name: k8s-node
-    DependsOn: K8sCluster
+        - !GetAtt PublicSubnet1.SubnetId
+        - !GetAtt PublicSubnet2.SubnetId
+      Type: application
+
+  ApiTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: a role for the api task execution
+      RoleName: api-task
+
+  ApiExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: a role for the api task
+      RoleName: api-task-execution
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: api-service
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !Join
+                  - ':'
+                  - - 'arn:aws:ecr'
+                    - !Ref AWS::Region
+                    - !Ref AWS::AccountId
+                    - 'repository/api'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+
+  ApiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Cpu: 256
+          Environment:
+            - Name: USER_API_HOST
+              Value: user.api.local:3000
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/api:latest'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              "awslogs-region": "us-east-1"
+              "awslogs-group": "ecs-practice"
+              "awslogs-stream-prefix": "api"
+          Memory: 512
+          Name: api
+          PortMappings:
+            - AppProtocol: http
+              ContainerPort: 3000
+              Protocol: tcp
+      Cpu: 256
+      ExecutionRoleArn: !GetAtt UserApiExecutionRole.Arn
+      Family: api
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      TaskRoleArn: !GetAtt ApiTaskRole.Arn
+
+  ApiTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /
+      HealthCheckPort: 3000
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      IpAddressType: ipv4
+      Name: api
+      Port: 3000
+      Protocol: HTTP
+      TargetType: ip
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPC
+
+  ApiEcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow ingress alb traffic
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !GetAtt LoadBalancerSecurityGroup.GroupId
+          Description: allow ingress alb traffic
+          IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+      VpcId: !Ref VPC
+
+  ApiEcsService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ApiListener
+    Properties:
+      Cluster: !GetAtt EcsCluster.Arn
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: api
+          ContainerPort: 3000
+          TargetGroupArn: !Ref ApiTargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+          SecurityGroups:
+            - !GetAtt ApiEcsSecurityGroup.GroupId
+      ServiceName: api
+      TaskDefinition: !GetAtt ApiTaskDefinition.TaskDefinitionArn
 
 Outputs:
   VPC:
@@ -304,4 +569,3 @@ Outputs:
   NoIngressSecurityGroup:
     Description: Security group with no ingress rule
     Value: !Ref NoIngressSecurityGroup
-

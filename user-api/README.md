@@ -48,7 +48,7 @@ $ npm run start:prod
 $ npm run docker:build
 
 # to run the container
-$ docker run -d -p 4000:4000 -e PORT=4000 --name user-api <partial-image-id>
+$ docker run --rm -d -p 4000:4000 -e PORT=4000 --name user-api <image>
 ```
 
 ## Test

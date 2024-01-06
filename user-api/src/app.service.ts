@@ -6,20 +6,28 @@ export interface User {
   lastName: string;
 }
 
+export interface UserResponse {
+  count: number;
+  users: User[];
+}
+
 const min = 10;
 const max = 100;
 
 @Injectable()
 export class AppService {
-  getUsers(): User[] {
+  getUsers(): UserResponse {
     const users = [];
-    const numOfUsers = Math.random() * (max - min) + min;
+    const count = Math.ceil(Math.random() * (max - min) + min);
 
-    for (var i = 0; i < numOfUsers; i++) {
+    for (let i = 0; i < count; i++) {
       users.push(this.createUser());
     }
 
-    return users;
+    return {
+      count,
+      users,
+    };
   }
 
   private createUser(): User {

@@ -49,9 +49,7 @@ $ npm run docker:build
 
 # this container has a dependecy on the user-api, and docker bridge networking only allows ip address communication between containers
 # get the ip address of the user-api
-$ docker inspect <user-api-container-id> | grep "IPAddress"
-
-$ docker run -d -e USER_API_URL=localhost:4000 -p 3000:3000 --name api <partial-image-id>
+$ docker run --rm -d -e USER_API_HOST=$(docker inspect user-api | jq -r ".[0].NetworkSettings.IPAddress"):4000 -p 3000:3000 --name api <image>
 ```
 
 ## Test

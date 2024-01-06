@@ -9,3 +9,11 @@ export class AppController {
     return this.appService.getUsers();
   }
 }
+
+@Controller('')
+export class TestController {
+  @Get()
+  get(): Promise<string> {
+    return Promise.resolve('hello world');
+  }
+}
