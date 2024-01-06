@@ -83,3 +83,7 @@ docker push $aws_account_id.dkr.ecr.$region.amazonaws.com/api:latest
 ```
 docker push $aws_account_id.dkr.ecr.$region.amazonaws.com/user-api:latest
 ```
+
+### usage
+
+copy the dns address to your alb into your browser, this will display a hello world page. If that works, append a /users to the url and that should make a call to the user-api task running.
