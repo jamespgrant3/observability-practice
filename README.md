@@ -21,7 +21,7 @@ Two api's exist in this project, `api` and `user-api`, both are nestjs projects:
 PORT=4000 npm run start:dev
 ```
 
-`cd` into the api directory.. Run:
+`cd` into the api directory. Run:
 ```
 npm run start:dev
 ```
