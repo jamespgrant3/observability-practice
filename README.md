@@ -1,12 +1,12 @@
-# ECS Practice
+# Observability Practice
 
 ## Description
-This is a project to gain more experience with ECS, more specifically task communication. I also hope to layer in observability.
+This is a project to gain more experience with observability. This project started as an [eks](https://github.com/jamespgrant3/eks-practice) project. I then wanted to try to recreate it using [ecs](https://github.com/jamespgrant3/ecs-practice). This project will focus on adding observability to the ecs project. I might revisit the eks project and do the same thing? I want to implement observability using two providers. I think I am going to use [Datadog](https://www.datadoghq.com/) and [New Relic](https://newrelic.com).
+
+I will do this work in two branches: `datadog` and `newrelic`.
 
 ### Initial thoughts:
-What I don't want to do, is focus on pipeline stuff. I want this time solely focused on learning the cloud service. So, there might be some manual pushing of images to ECR, etc. But, I want all the code to be public. In the end, you should be able to recreate this entire project in your AWS environment.
-
-I am positive the vision will change as I learn what I am doing.
+What I don't want to do, is focus on pipeline stuff. I want this time solely focused on learning about observability and the service provider.
 
 ## Overview
 Two api's exist in this project, `api` and `user-api`, both are nestjs projects:
