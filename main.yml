@@ -264,6 +264,16 @@ Resources:
                 Action:
                   - ecr:GetAuthorizationToken
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Join
+                  - ':'
+                  - - 'arn:aws:secretsmanager'
+                    - !Ref AWS::Region
+                    - !Ref AWS::AccountId
+                    - 'secret'
+                    - 'NewRelicLicenseKeySecret-GhJeDizcW7tK-GnYqOb'
 
   UserApiTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -283,10 +293,34 @@ Resources:
             - AppProtocol: http
               ContainerPort: 3000
               Protocol: tcp
-      Cpu: 256
+        - Cpu: 256
+          Environment:
+            - Name: NRIA_OVERRIDE_HOST_ROOT
+              Value: ""
+            - Name: NRIA_IS_FORWARD_ONLY
+              Value: true
+            - Name: FARGATE
+              Value: true
+            - Name: NRIA_PASSTHROUGH_ENVIRONMENT
+              Value: "ECS_CONTAINER_METADATA_URI,ECS_CONTAINER_METADATA_URI_V4,FARGATE"
+            - Name: NRIA_CUSTOM_ATTRIBUTES
+              Value: "{\"nrDeployMethod\":\"downloadPage\"}"
+          Image: newrelic/nri-ecs:1.10.8
+          Memory: 512
+          Name: newrelic-infra
+          Secrets:
+            - Name: NRIA_LICENSE_KEY
+              ValueFrom: !Join
+                - ':'
+                - - 'arn:aws:secretsmanager'
+                  - !Ref AWS::Region
+                  - !Ref AWS::AccountId
+                  - 'secret'
+                  - 'NewRelicLicenseKeySecret-GhJeDizcW7tK-GnYqOb'
+      Cpu: 512
       ExecutionRoleArn: !GetAtt UserApiExecutionRole.Arn
       Family: user-api
-      Memory: 512
+      Memory: 1024
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -450,6 +484,16 @@ Resources:
                 Action:
                   - ecr:GetAuthorizationToken
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Join
+                  - ':'
+                  - - 'arn:aws:secretsmanager'
+                    - !Ref AWS::Region
+                    - !Ref AWS::AccountId
+                    - 'secret'
+                    - 'NewRelicLicenseKeySecret-GhJeDizcW7tK-GnYqOb'
 
   ApiTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -474,10 +518,34 @@ Resources:
             - AppProtocol: http
               ContainerPort: 3000
               Protocol: tcp
-      Cpu: 256
+        - Cpu: 256
+          Environment:
+            - Name: NRIA_OVERRIDE_HOST_ROOT
+              Value: ""
+            - Name: NRIA_IS_FORWARD_ONLY
+              Value: true
+            - Name: FARGATE
+              Value: true
+            - Name: NRIA_PASSTHROUGH_ENVIRONMENT
+              Value: "ECS_CONTAINER_METADATA_URI,ECS_CONTAINER_METADATA_URI_V4,FARGATE"
+            - Name: NRIA_CUSTOM_ATTRIBUTES
+              Value: "{\"nrDeployMethod\":\"downloadPage\"}"
+          Image: newrelic/nri-ecs:1.10.8
+          Memory: 512
+          Name: newrelic-infra
+          Secrets:
+            - Name: NRIA_LICENSE_KEY
+              ValueFrom: !Join
+                - ':'
+                - - 'arn:aws:secretsmanager'
+                  - !Ref AWS::Region
+                  - !Ref AWS::AccountId
+                  - 'secret'
+                  - 'NewRelicLicenseKeySecret-GhJeDizcW7tK-GnYqOb'
+      Cpu: 512
       ExecutionRoleArn: !GetAtt UserApiExecutionRole.Arn
       Family: api
-      Memory: 512
+      Memory: 1024
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE

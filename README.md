@@ -32,6 +32,15 @@ Now, if you navigate to `localhost:3000` you will greated with a hello world scr
 
 ## Deployment
 
+### deploy new relic stack
+```
+aws cloudformation create-stack \
+--stack-name new-relic \
+--template-body file://new-relic-stack.yml \
+--parameters ParameterKey=LicenseKey,ParameterValue=<enter license key here> \
+--capabilities CAPABILITY_NAMED_IAM
+```
+
 ### export variables for ease
 ```
 export region=us-east-1
