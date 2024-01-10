@@ -280,6 +280,9 @@ Resources:
     Properties:
       ContainerDefinitions:
         - Cpu: 256
+          Environment:
+            - Name: NEW_RELIC_APP_NAME
+              Value: user-api
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/user-api:latest'
           LogConfiguration:
             LogDriver: awslogs
@@ -293,6 +296,15 @@ Resources:
             - AppProtocol: http
               ContainerPort: 3000
               Protocol: tcp
+          Secrets:
+            - Name: NEW_RELIC_LICENSE_KEY
+              ValueFrom: !Join
+                - ':'
+                - - 'arn:aws:secretsmanager'
+                  - !Ref AWS::Region
+                  - !Ref AWS::AccountId
+                  - 'secret'
+                  - 'NewRelicLicenseKeySecret-GhJeDizcW7tK-GnYqOb'
         - Cpu: 256
           Environment:
             - Name: NRIA_OVERRIDE_HOST_ROOT
@@ -505,6 +517,8 @@ Resources:
               Value: user.api.local
             - Name: USER_API_PORT
               Value: 3000
+            - Name: NEW_RELIC_APP_NAME
+              Value: api
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/api:latest'
           LogConfiguration:
             LogDriver: awslogs
@@ -518,6 +532,15 @@ Resources:
             - AppProtocol: http
               ContainerPort: 3000
               Protocol: tcp
+          Secrets:
+            - Name: NEW_RELIC_LICENSE_KEY
+              ValueFrom: !Join
+                - ':'
+                - - 'arn:aws:secretsmanager'
+                  - !Ref AWS::Region
+                  - !Ref AWS::AccountId
+                  - 'secret'
+                  - 'NewRelicLicenseKeySecret-GhJeDizcW7tK-GnYqOb'
         - Cpu: 256
           Environment:
             - Name: NRIA_OVERRIDE_HOST_ROOT

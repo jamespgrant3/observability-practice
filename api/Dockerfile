@@ -12,4 +12,4 @@ FROM gcr.io/distroless/nodejs18-debian11
 COPY --from=build-env /app /app
 WORKDIR /app
 
-CMD ["/app/main.js"]
+CMD ["-r", "newrelic", "/app/main.js"]
